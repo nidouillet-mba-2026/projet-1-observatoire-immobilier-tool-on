@@ -1,48 +1,56 @@
 """
-Fonctions statistiques from scratch.
-Reference : Joel Grus, "Data Science From Scratch", chapitre 5.
-
-IMPORTANT : N'importez pas numpy, pandas ou statistics pour ces fonctions.
-Implementez-les avec du Python pur (listes, boucles, math).
+Statistiques from scratch - sans numpy
 """
 
-import math
+def mean(xs):
+    if len(xs) == 0:
+        raise ValueError("La liste xs ne peut pas être vide.")
+    return sum(xs) / len(xs)
 
 
-def mean(xs: list[float]) -> float:
-    """Retourne la moyenne d'une liste de nombres."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez mean() - voir Grus ch.5")
+def median(xs):
+    if len(xs) == 0:
+        raise ValueError("La liste xs ne peut pas être vide.")
+    s = sorted(xs)
+    n = len(s)
+    mid = n // 2
+    if n % 2 == 0:
+        return (s[mid - 1] + s[mid]) / 2
+    return float(s[mid])
 
 
-def median(xs: list[float]) -> float:
-    """Retourne la mediane d'une liste de nombres."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez median() - voir Grus ch.5")
+def variance(xs):
+    if len(xs) == 0:
+        raise ValueError("La liste xs ne peut pas être vide.")
+    m = mean(xs)
+    return sum((x - m) ** 2 for x in xs) / len(xs)
 
 
-def variance(xs: list[float]) -> float:
-    """Retourne la variance d'une liste de nombres."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez variance() - voir Grus ch.5")
+def standard_deviation(xs):
+    return variance(xs) ** 0.5
 
 
-def standard_deviation(xs: list[float]) -> float:
-    """Retourne l'ecart-type d'une liste de nombres."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez standard_deviation() - voir Grus ch.5")
+def covariance(xs, ys):
+    if len(xs) == 0 or len(ys) == 0:
+        raise ValueError("Les listes xs et ys ne peuvent pas être vides.")
+    if len(xs) != len(ys):
+        raise ValueError("Les listes xs et ys doivent avoir la même taille.")
+
+    m_x = mean(xs)
+    m_y = mean(ys)
+    return sum((x - m_x) * (y - m_y) for x, y in zip(xs, ys)) / len(xs)
 
 
-def covariance(xs: list[float], ys: list[float]) -> float:
-    """Retourne la covariance entre deux series."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez covariance() - voir Grus ch.5")
+def correlation(xs, ys):
+    if len(xs) == 0 or len(ys) == 0:
+        raise ValueError("Les listes xs et ys ne peuvent pas être vides.")
+    if len(xs) != len(ys):
+        raise ValueError("Les listes xs et ys doivent avoir la même taille.")
 
+    std_x = standard_deviation(xs)
+    std_y = standard_deviation(ys)
 
-def correlation(xs: list[float], ys: list[float]) -> float:
-    """
-    Retourne le coefficient de correlation de Pearson entre deux series.
-    Retourne 0 si l'une des series a un ecart-type nul.
-    """
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez correlation() - voir Grus ch.5")
+    if std_x == 0 or std_y == 0:
+        return 0.0
+
+    return covariance(xs, ys) / (std_x * std_y)

@@ -1,48 +1,49 @@
-import pandas as pd
-import numpy as np
-from sklearn.linear_model import LinearRegression
+"""
+Scoring immobilier from scratch
+"""
+from analysis.stats import mean, standard_deviation
 
-def load_data(filepath):
-    """Charge les données immobilières"""
-    df = pd.read_csv(filepath)
-    return df
 
-def train_model(df):
-    """Entraîne un modèle de prédiction de prix"""
-    # Variables utilisées pour prédire
-    features = ['surface', 'nb_pieces', 'code_postal']
-    target = 'prix'
-    
-    df_clean = df[features + [target]].dropna()
-    
-    X = df_clean[features]
-    y = df_clean[target]
-    
-    model = LinearRegression()
-    model.fit(X, y)
-    
-    return model, df_clean
+def score_bien(prix, surface, nb_pieces, proximite_mer):
+    """
+    Score de 0 à 100 pour un bien immobilier.
+    - prix : prix en euros
+    - surface : surface en m²
+    - nb_pieces : nombre de pièces
+    - proximite_mer : distance en km (0 = bord de mer)
+    """
+    # Prix au m²
+    prix_m2 = prix / surface if surface > 0 else float('inf')
 
-def predict_prices(model, df):
-    """Prédit les prix et calcule le scoring"""
-    features = ['surface', 'nb_pieces', 'code_postal']
-    
-    df['prix_predit'] = model.predict(df[features])
-    df['ecart'] = df['prix'] - df['prix_predit']
-    df['ecart_pct'] = (df['ecart'] / df['prix_predit']) * 100
-    
-    return df
+    # Score prix (moins c'est cher, mieux c'est)
+    score_prix = max(0, 100 - (prix_m2 / 50))
 
-def classify_bien(ecart_pct):
-    """Classifie un bien : opportunité / prix marché / surévalué"""
-    if ecart_pct < -10:
-        return 'opportunité'
-    elif ecart_pct > 10:
-        return 'surévalué'
-    else:
-        return 'prix marché'
+    # Score surface
+    score_surface = min(100, surface / 2)
 
-def score_biens(df):
-    """Applique la classification à tous les biens"""
-    df['scoring'] = df['ecart_pct'].apply(classify_bien)
-    return df
+    # Score pièces
+    score_pieces = min(100, nb_pieces * 20)
+
+    # Score proximité mer
+    score_mer = max(0, 100 - proximite_mer * 10)
+
+    # Score final pondéré
+    score = (
+        score_prix * 0.4 +
+        score_surface * 0.3 +
+        score_pieces * 0.1 +
+        score_mer * 0.2
+    )
+    return round(score, 2)
+
+
+def classer_biens(biens):
+    """
+    Classe une liste de biens par score décroissant.
+    biens : liste de dicts avec clés prix, surface, nb_pieces, proximite_mer
+    """
+    scored = []
+    for b in biens:
+        s = score_bien(b['prix'], b['surface'], b['nb_pieces'], b['proximite_mer'])
+        scored.append({**b, 'score': s})
+    return sorted(scored, key=lambda x: x['score'], reverse=True)
