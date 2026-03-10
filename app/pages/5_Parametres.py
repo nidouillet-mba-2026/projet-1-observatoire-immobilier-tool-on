@@ -2,6 +2,7 @@ import streamlit as st
 
 from app.components.ui import apply_custom_css, initialize_session_state, page_header, sidebar_logo
 from app.config import DEFAULT_SETTINGS
+from app.services.data_provider import get_listings_metadata
 
 st.set_page_config(page_title="Paramètres", layout="wide")
 
@@ -39,15 +40,25 @@ with col1:
         st.success("Préférences sauvegardées pour la session en cours.")
 
 with col2:
-    st.markdown("### Exports & API")
-    include_address = st.checkbox("Inclure les adresses complètes dans les CSV", value=False)
-    api_key = st.text_input("Clé API Système Interne", value="sk-immo-toulon-2026-xyz", type="password")
+    st.markdown("### Données & cache")
+    if st.button("Rafraîchir les données", use_container_width=True):
+        st.cache_data.clear()
+        st.success("Cache vidé. Les données seront rechargées au prochain calcul.")
 
-    st.caption(
-        "Paramètres techniques en mode maquette: ils préparent l'intégration backend "
-        "sans impacter l'évaluation automatique."
-    )
-    st.code(
-        f"include_address={include_address}\napi_key_present={bool(api_key)}",
-        language="text",
-    )
+    meta = get_listings_metadata()
+    st.markdown("#### Diagnostic CSV annonces")
+    st.write(f"Chemin utilisé: `{meta.get('csv_path') or 'Aucun'}`")
+    st.write(f"Source active: `{meta.get('source')}`")
+    st.write(f"Lignes chargées: `{meta.get('rows')}`")
+    detected = meta.get("detected_columns") or []
+    if detected:
+        st.write(f"Colonnes détectées (CSV brut): `{', '.join(detected)}`")
+    else:
+        st.write(f"Colonnes standards actives: `{', '.join(meta.get('columns', []))}`")
+
+    date_min = meta.get("date_min")
+    date_max = meta.get("date_max")
+    if date_min is not None and date_max is not None:
+        st.write(f"Dates: `{date_min:%Y-%m-%d}` -> `{date_max:%Y-%m-%d}`")
+    else:
+        st.warning("Aucune date exploitable détectée dans les annonces.")

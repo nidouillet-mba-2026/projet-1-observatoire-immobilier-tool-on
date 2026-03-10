@@ -5,6 +5,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "donnees"
 ANALYSIS_DIR = BASE_DIR / "analysis"
 
+# Source annonces reelles
+LISTINGS_ENV_VAR = "LISTINGS_CSV_PATH"
+LISTINGS_SEARCH_DIRS = [DATA_DIR, BASE_DIR]
+
 QUARTIERS = [
     "Mourillon",
     "Haute Ville",
