@@ -31,7 +31,7 @@ def clean_dvf_advanced(input_file, output_folder):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    output_file = os.path.join(output_folder, "DVF-83-Toulon-2024-2025advanced.csv")
+    output_file = os.path.join(output_folder, "dvf_toulon.csv")
 
     # premiere passe : on collecte toutes les donnees pour calculer les statistiques
     mutations = {}
