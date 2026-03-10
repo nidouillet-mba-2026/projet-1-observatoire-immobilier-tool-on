@@ -3,10 +3,12 @@ import streamlit as st
 
 from app.components.ui import (
     apply_custom_css,
+    get_plotly_template,
     initialize_session_state,
     page_header,
     section_title,
     sidebar_logo,
+    topbar,
 )
 from app.config import QUARTIERS
 from app.services.data_provider import get_sales
@@ -17,10 +19,11 @@ st.set_page_config(page_title="Marché - NidDouillet", layout="wide")
 initialize_session_state()
 apply_custom_css()
 sidebar_logo()
+topbar("Analyse du Marché (DVF)")
 
 period = st.session_state.get("periode", "12 derniers mois")
 sales_df = filter_by_period(get_sales(), "Date", period)
-page_header("Analyse du Marché (DVF)", export_df=sales_df, export_filename="marche_dvf.csv")
+page_header(export_df=sales_df, export_filename="marche_dvf.csv")
 
 period = st.session_state.get("periode", "12 derniers mois")
 sales_df = filter_by_period(get_sales(), "Date", period)
@@ -56,6 +59,7 @@ else:
             color_discrete_sequence=px.colors.qualitative.Pastel,
         )
         fig.update_layout(
+            template=get_plotly_template(),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=0, r=0, t=10, b=0),
@@ -70,6 +74,7 @@ else:
         monthly_volume = monthly.groupby("Mois", as_index=False).size().rename(columns={"size": "Transactions"})
         fig_month = px.bar(monthly_volume, x="Mois", y="Transactions", color_discrete_sequence=["#0ea5e9"])
         fig_month.update_layout(
+            template=get_plotly_template(),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=0, r=0, t=10, b=0),

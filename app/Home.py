@@ -3,11 +3,13 @@ import streamlit as st
 
 from app.components.ui import (
     apply_custom_css,
+    get_plotly_template,
     initialize_session_state,
     kpi_card,
     page_header,
     section_title,
     sidebar_logo,
+    topbar,
 )
 from app.services.data_provider import get_listings, get_sales, get_listings_metadata
 from app.services.metrics import (
@@ -24,13 +26,14 @@ st.set_page_config(page_title="Accueil - NidDouillet", layout="wide", initial_si
 initialize_session_state()
 apply_custom_css()
 sidebar_logo()
+topbar("Vue d'ensemble")
 
 period = st.session_state.get("periode", "12 derniers mois")
 base_listings = get_listings()
 listings_df = filter_by_period(base_listings, "date_ajout", period)
 scored_listings = compute_opportunity_scores(listings_df, get_sales())
 
-page_header("Vue d'ensemble", export_df=scored_listings, export_filename="accueil_annonces.csv")
+page_header(export_df=scored_listings, export_filename="accueil_annonces.csv")
 
 period = st.session_state.get("periode", "12 derniers mois")
 listings_df = filter_by_period(base_listings, "date_ajout", period)
@@ -77,6 +80,7 @@ with col_chart1:
             labels={"prix_m2": "Prix/m²", "quartier": "Quartier"},
         )
         fig.update_layout(
+            template=get_plotly_template(),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=0, r=0, t=0, b=0),
@@ -98,6 +102,7 @@ with col_chart2:
         )
         fig2 = px.line(trend_df, x="Date", y="Prix m² médian", color_discrete_sequence=["#10b981"])
         fig2.update_layout(
+            template=get_plotly_template(),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=0, r=0, t=0, b=0),

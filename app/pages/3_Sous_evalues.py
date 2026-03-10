@@ -7,6 +7,7 @@ from app.components.ui import (
     page_header,
     section_title,
     sidebar_logo,
+    topbar,
 )
 from app.services.data_provider import get_listings, get_sales
 from app.services.metrics import compute_opportunity_scores, filter_by_period
@@ -16,13 +17,14 @@ st.set_page_config(page_title="Sous-évalués", layout="wide")
 initialize_session_state()
 apply_custom_css()
 sidebar_logo()
+topbar("Annonces Sous-évaluées")
 
 period = st.session_state.get("periode", "12 derniers mois")
 base_listings = get_listings()
 listings_df = filter_by_period(base_listings, "date_ajout", period)
 scored_df = compute_opportunity_scores(listings_df, get_sales())
 
-page_header("Annonces Sous-évaluées", export_df=scored_df, export_filename="annonces_sous_evaluees.csv")
+page_header(export_df=scored_df, export_filename="annonces_sous_evaluees.csv")
 
 period = st.session_state.get("periode", "12 derniers mois")
 listings_df = filter_by_period(base_listings, "date_ajout", period)

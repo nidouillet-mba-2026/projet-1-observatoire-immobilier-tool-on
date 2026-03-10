@@ -3,11 +3,13 @@ import streamlit as st
 
 from app.components.ui import (
     apply_custom_css,
+    get_plotly_template,
     initialize_session_state,
     kpi_card,
     page_header,
     section_title,
     sidebar_logo,
+    topbar,
 )
 from app.services.data_provider import get_listings
 from app.services.metrics import build_listing_trend, compute_trend_insights
@@ -17,11 +19,12 @@ st.set_page_config(page_title="Tendances", layout="wide")
 initialize_session_state()
 apply_custom_css()
 sidebar_logo()
+topbar("Évolution & Tendances")
 
 listings_df = get_listings().copy()
 trend_df = build_listing_trend(listings_df)
 
-page_header("Évolution & Tendances", export_df=trend_df, export_filename="tendances_listings.csv", show_period=False)
+page_header(export_df=trend_df, export_filename="tendances_listings.csv", show_period=False)
 
 if trend_df.empty:
     st.info("Pas de dates exploitables dans le CSV: tendances indisponibles.")
@@ -54,6 +57,7 @@ else:
         labels={"Prix m² médian": "Prix moyen/m² (€)"},
     )
     fig.update_layout(
+        template=get_plotly_template(),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         hovermode="x unified",
@@ -67,6 +71,7 @@ else:
     section_title("Volume d'annonces par mois")
     fig_vol = px.bar(plot_df, x="Date", y="Volume", color_discrete_sequence=["#0ea5e9"])
     fig_vol.update_layout(
+        template=get_plotly_template(),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(t=20, l=8, r=8, b=8),

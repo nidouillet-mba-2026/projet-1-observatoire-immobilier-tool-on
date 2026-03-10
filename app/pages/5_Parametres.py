@@ -1,6 +1,6 @@
 import streamlit as st
 
-from app.components.ui import apply_custom_css, initialize_session_state, page_header, sidebar_logo
+from app.components.ui import apply_custom_css, initialize_session_state, page_header, sidebar_logo, topbar
 from app.config import DEFAULT_SETTINGS
 from app.services.data_provider import get_listings_metadata
 
@@ -9,18 +9,15 @@ st.set_page_config(page_title="Paramètres", layout="wide")
 initialize_session_state()
 apply_custom_css()
 sidebar_logo()
+topbar("Paramètres")
 
-page_header("Paramètres", show_period=False)
+page_header(show_period=False)
 
 col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("### Préférences d'affichage")
-    theme = st.selectbox(
-        "Thème visuel",
-        ["SaaS Clair (Défaut)", "Mode Sombre (bientôt)"],
-        index=0 if st.session_state.get("theme") == "SaaS Clair (Défaut)" else 1,
-    )
+    st.text_input("Thème visuel", value="Géré par le toggle en haut à droite", disabled=True)
     min_score = st.slider(
         "Seuil d'alerte sous-évaluation (score)",
         min_value=50,
@@ -34,7 +31,6 @@ with col1:
     )
 
     if st.button("Sauvegarder les préférences", type="primary", use_container_width=True):
-        st.session_state["theme"] = theme
         st.session_state["min_opportunity_score"] = min_score
         st.session_state["rows_per_page"] = rows_per_page
         st.success("Préférences sauvegardées pour la session en cours.")

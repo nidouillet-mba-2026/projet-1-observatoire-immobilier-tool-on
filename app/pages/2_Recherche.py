@@ -8,6 +8,7 @@ from app.components.ui import (
     page_header,
     section_title,
     sidebar_logo,
+    topbar,
 )
 from app.config import SEARCH_SORT_OPTIONS
 from app.services.data_provider import get_listings, get_sales
@@ -18,13 +19,14 @@ st.set_page_config(page_title="Recherche", layout="wide")
 initialize_session_state()
 apply_custom_css()
 sidebar_logo()
+topbar("Recherche d'Annonces")
 
 period = st.session_state.get("periode", "12 derniers mois")
 base_listings = get_listings()
 listings_df = filter_by_period(base_listings, "date_ajout", period)
 scored_df = compute_opportunity_scores(listings_df, get_sales())
 
-page_header("Recherche d'Annonces", export_df=scored_df, export_filename="recherche_annonces.csv")
+page_header(export_df=scored_df, export_filename="recherche_annonces.csv")
 
 period = st.session_state.get("periode", "12 derniers mois")
 listings_df = filter_by_period(base_listings, "date_ajout", period)
@@ -99,19 +101,19 @@ else:
 
         st.markdown(
             f"""
-        <div style="background: white; border-radius: 12px; padding: 1.2rem; margin-bottom: 0.8rem; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: var(--card-bg); border-radius: 12px; padding: 1.2rem; margin-bottom: 0.8rem; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <div style="font-size: 1.05rem; font-weight: 600; color: #0f172a; margin-bottom: 0.3rem;">
+                <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-color); margin-bottom: 0.3rem;">
                     {quartier} • <span style="color: #0ea5e9;">{row['surface_m2']:.1f} m²</span> • {pieces} pièces
                 </div>
-                <div style="color: #64748b; font-size: 0.875rem; display: flex; align-items: center; gap: 0.75rem;">
+                <div style="color: var(--muted); font-size: 0.875rem; display: flex; align-items: center; gap: 0.75rem;">
                     <span>{adresse}</span>
                     <span class='badge {badge_class}'>Score: {score}/100</span>
                 </div>
             </div>
             <div style="text-align: right;">
-                <div style="font-size: 1.35rem; font-weight: 700; color: #0f172a;">{prix_str}</div>
-                <div style="color: #94a3b8; font-size: 0.85rem;">{row['prix_m2']:.0f} €/m²</div>
+                <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-color);">{prix_str}</div>
+                <div style="color: var(--muted); font-size: 0.85rem;">{row['prix_m2']:.0f} €/m²</div>
             </div>
         </div>
         """,
