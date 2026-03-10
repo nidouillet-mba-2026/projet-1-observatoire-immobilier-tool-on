@@ -49,7 +49,7 @@ streamlit run app/streamlit_app.py
 
 ## Application deployee
 
-**URL :** URL : https://example.streamlit.app
+**URL :** https://example.streamlit.app 
 
 ## Repartition du travail
 
@@ -57,7 +57,7 @@ streamlit run app/streamlit_app.py
 |--------|------|--------------------------|
 | Prenom NOM | Data Engineer | ... |
 | Prenom NOM | Data Scientist | ... |
-| Prenom NOM | AI Engineer | ... |
+| Prenom NOM | AI Engineer | Mody Hady BARRY |
 | Prenom NOM | Frontend / DevOps | ... |
 
 ## Donnees

@@ -1,51 +1,267 @@
 """
-Module de scoring immobilier développé pour identifier les opportunités
-sur le marché en combinant plusieurs critères métier :
-- prix au m²
-- surface
-- nombre de pièces
-- proximité de la mer
+Scoring des biens immobiliers.
 
-L'objectif est d'obtenir un score global (0 à 100) permettant de comparer
-facilement plusieurs biens immobiliers.
+Objectif :
+- comparer prix predit vs prix annonce
+- identifier les opportunites
+- classifier les biens :
+    * opportunite
+    * prix_marche
+    * surevalue
+- extraire quelques informations utiles depuis la description
 """
 
-# On importe la fonction predict définie dans le module de régression
-# qui permet d'estimer le prix d'un bien à partir de sa surface.
+import re
 from analysis.regression import predict
 
 
-def score_bien(prix, surface, nb_pieces, proximite_mer):
+def safe_float(value, default=0.0) -> float:
+    """Convertit une valeur en float de maniere defensive."""
+    try:
+        if value is None:
+            return float(default)
+        if isinstance(value, str):
+            value = value.replace("€", "").replace(" ", "").replace(",", ".")
+        return float(value)
+    except (ValueError, TypeError):
+        return float(default)
+
+
+def price_difference(predicted_price: float, listed_price: float) -> float:
+    """
+    Retourne l'ecart absolu :
+    prix_annonce - prix_predit
+    Negatif = annonce moins chere que prevu
+    Positif = annonce plus chere que prevu
+    """
+    predicted_price = safe_float(predicted_price)
+    listed_price = safe_float(listed_price)
+    return listed_price - predicted_price
+
+
+def price_difference_pct(predicted_price: float, listed_price: float) -> float:
+    """
+    Retourne l'ecart relatif en pourcentage :
+    ((prix_annonce - prix_predit) / prix_predit) * 100
+
+    Negatif = sous le prix predit
+    Positif = au-dessus du prix predit
+    """
+    predicted_price = safe_float(predicted_price)
+    listed_price = safe_float(listed_price)
+
+    if predicted_price <= 0:
+        return 0.0
+
+    return ((listed_price - predicted_price) / predicted_price) * 100
+
+
+def classify_listing(
+    predicted_price: float,
+    listed_price: float,
+    opportunity_threshold: float = -8.0,
+    overpriced_threshold: float = 8.0,
+) -> str:
+    """
+    Classe un bien selon l'ecart relatif entre prix predit et prix annonce.
+
+    Exemples :
+    - ecart <= -8%  -> opportunite
+    - entre -8% et +8% -> prix_marche
+    - ecart >= +8%  -> surevalue
+    """
+    predicted_price = safe_float(predicted_price)
+    listed_price = safe_float(listed_price)
+
+    if predicted_price <= 0:
+        return "inclassable"
+
+    gap_pct = price_difference_pct(predicted_price, listed_price)
+
+    if gap_pct <= opportunity_threshold:
+        return "opportunite"
+    elif gap_pct >= overpriced_threshold:
+        return "surevalue"
+    else:
+        return "prix_marche"
+
+
+def opportunity_score(predicted_price: float, listed_price: float) -> float:
+    """
+    Score d'opportunite sur 100.
+
+    Idee simple :
+    - plus le prix annonce est sous le prix predit, plus le score monte
+    - si le bien est survalue, le score baisse
+
+    50 = neutre
+    > 50 = interessant
+    < 50 = moins interessant
+    """
+    gap_pct = price_difference_pct(predicted_price, listed_price)
+
+    score = 50 - gap_pct
+
+    if score < 0:
+        return 0.0
+    if score > 100:
+        return 100.0
+    return round(score, 2)
+
+
+def is_opportunity(predicted_price: float, listed_price: float, threshold: float = -8.0) -> bool:
+    """Retourne True si le bien est considere comme une opportunite."""
+    return price_difference_pct(predicted_price, listed_price) <= threshold
+
+
+def extract_features_from_description(description: str) -> dict:
+    """
+    Extrait quelques informations simples depuis la description.
+    Version legere sans IA externe, basee sur des mots-cles.
+    """
+    if not description:
+        description = ""
+
+    text = description.lower()
+
+    features = {
+        "parking": False,
+        "garage": False,
+        "balcon": False,
+        "terrasse": False,
+        "ascenseur": False,
+        "vue_mer": False,
+        "etage": None,
+        "dernier_etage": False,
+        "travaux": False,
+        "renove": False,
+        "lumineux": False,
+        "calme": False,
+        "piscine": False,
+    }
+
+    parking_keywords = ["parking", "stationnement", "place de parking"]
+    garage_keywords = ["garage", "box ferme", "box fermé", "box"]
+    balcon_keywords = ["balcon"]
+    terrasse_keywords = ["terrasse"]
+    ascenseur_keywords = ["ascenseur"]
+    vue_mer_keywords = ["vue mer", "aperçu mer", "apercu mer", "vue sur mer"]
+    travaux_keywords = ["travaux", "a renover", "à rénover", "renovation", "rafraichir", "rafraîchir"]
+    renove_keywords = ["renove", "rénové", "refait a neuf", "refait à neuf", "neuf"]
+    lumineux_keywords = ["lumineux", "lumineuse", "belle luminosite", "belle luminosité"]
+    calme_keywords = ["calme", "sans vis-a-vis", "sans vis-à-vis"]
+    piscine_keywords = ["piscine"]
+
+    features["parking"] = any(word in text for word in parking_keywords)
+    features["garage"] = any(word in text for word in garage_keywords)
+    features["balcon"] = any(word in text for word in balcon_keywords)
+    features["terrasse"] = any(word in text for word in terrasse_keywords)
+    features["ascenseur"] = any(word in text for word in ascenseur_keywords)
+    features["vue_mer"] = any(word in text for word in vue_mer_keywords)
+    features["travaux"] = any(word in text for word in travaux_keywords)
+    features["renove"] = any(word in text for word in renove_keywords)
+    features["lumineux"] = any(word in text for word in lumineux_keywords)
+    features["calme"] = any(word in text for word in calme_keywords)
+    features["piscine"] = any(word in text for word in piscine_keywords)
+    features["dernier_etage"] = "dernier etage" in text or "dernier étage" in text
+
+    patterns = [
+        r"(\d+)\s*e?\s*etage",
+        r"(\d+)\s*e?\s*étage",
+        r"au\s+(\d+)\s*e?\s*etage",
+        r"au\s+(\d+)\s*e?\s*étage",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            try:
+                features["etage"] = int(match.group(1))
+                break
+            except ValueError:
+                pass
+
+    return features
+
+
+def generate_listing_insight(predicted_price: float, listed_price: float, description: str = "") -> str:
+    """
+    Genere un court commentaire utile pour un conseiller immobilier.
+    """
+    category = classify_listing(predicted_price, listed_price)
+    gap_pct = round(price_difference_pct(predicted_price, listed_price), 2)
+    features = extract_features_from_description(description)
+
+    extras = []
+    if features["vue_mer"]:
+        extras.append("vue mer")
+    if features["terrasse"]:
+        extras.append("terrasse")
+    if features["balcon"]:
+        extras.append("balcon")
+    if features["parking"]:
+        extras.append("parking")
+    if features["garage"]:
+        extras.append("garage")
+    if features["ascenseur"]:
+        extras.append("ascenseur")
+    if features["renove"]:
+        extras.append("bien renove")
+    if features["travaux"]:
+        extras.append("travaux a prevoir")
+
+    extras_text = ""
+    if extras:
+        extras_text = " Atouts/indices detectes : " + ", ".join(extras) + "."
+
+    if category == "opportunite":
+        return (
+            f"Bien affiche environ {abs(gap_pct)}% sous le prix estime : opportunite interessante."
+            f"{extras_text}"
+        )
+    elif category == "surevalue":
+        return (
+            f"Bien affiche environ {abs(gap_pct)}% au-dessus du prix estime : prix potentiellement surevalue."
+            f"{extras_text}"
+        )
+    elif category == "prix_marche":
+        return (
+            f"Bien affiche dans une zone proche du prix estime ({gap_pct}% d'ecart) : prix coherent avec le marche."
+            f"{extras_text}"
+        )
+    else:
+        return "Impossible de classifier ce bien de maniere fiable."
+
+
+def score_bien(prix, surface, nb_pieces=0, proximite_mer=None):
     """
     Calcule un score global entre 0 et 100 pour un bien immobilier.
 
-    Le score repose sur plusieurs critères :
-    - le prix au m² (plus il est bas, plus le bien est intéressant)
-    - la surface
-    - le nombre de pièces
-    - la proximité de la mer
-
-    Chaque critère est pondéré pour refléter son importance relative.
+    Cette fonction est conservee pour rester compatible avec les tests.
     """
+    prix = safe_float(prix)
+    surface = safe_float(surface)
+    nb_pieces = safe_float(nb_pieces, 0)
 
-    # Calcul du prix au m².
-    # On protège aussi contre une division par zéro si la surface vaut 0.
-    prix_m2 = prix / surface if surface > 0 else float("inf")
+    if surface <= 0:
+        prix_m2 = 0.0
+    else:
+        prix_m2 = prix / surface
 
-    # Score basé sur le prix : un prix au m² faible est considéré plus attractif.
-    score_prix = max(0, 100 - (prix_m2 / 50))
+    if prix_m2 <= 0:
+        score_prix = 0.0
+    else:
+        score_prix = max(0.0, 100.0 - (prix_m2 / 50.0))
 
-    # Score basé sur la surface : plus la surface est grande, plus le score augmente.
-    score_surface = min(100, surface / 2)
+    score_surface = min(100.0, surface / 2.0)
+    score_pieces = min(100.0, nb_pieces * 20.0)
 
-    # Score basé sur le nombre de pièces.
-    score_pieces = min(100, nb_pieces * 20)
+    if proximite_mer is None:
+        score_mer = 50.0
+    else:
+        proximite_mer = safe_float(proximite_mer, 0)
+        score_mer = max(0.0, 100.0 - proximite_mer * 10.0)
 
-    # Score basé sur la proximité de la mer :
-    # plus la distance est faible, plus le score est élevé.
-    score_mer = max(0, 100 - proximite_mer * 10)
-
-    # Combinaison pondérée des différents scores.
     score = (
         score_prix * 0.4 +
         score_surface * 0.3 +
@@ -53,119 +269,50 @@ def score_bien(prix, surface, nb_pieces, proximite_mer):
         score_mer * 0.2
     )
 
-    # On arrondit le score final à deux décimales pour plus de lisibilité.
     return round(score, 2)
-
-
-def classifier_prix(prix_annonce, prix_estime):
-    """
-    Compare le prix d'une annonce avec le prix estimé par le modèle.
-
-    Cette fonction permet de classer un bien en trois catégories :
-    - opportunite : le prix est nettement inférieur au prix estimé
-    - prix_marche : le prix est cohérent avec l'estimation
-    - surevalue : le bien semble trop cher par rapport au modèle
-    """
-
-    # Si le modèle retourne une estimation non valide, on ne peut pas classer.
-    if prix_estime <= 0:
-        return "inclassable"
-
-    # Calcul de l'écart relatif entre le prix annoncé et le prix estimé.
-    ecart_relatif = (prix_annonce - prix_estime) / prix_estime
-
-    # Si le prix est au moins 10% inférieur au prix estimé → opportunité.
-    if ecart_relatif <= -0.10:
-        return "opportunite"
-
-    # Si l'écart est dans une marge de ±10% → prix du marché.
-    elif ecart_relatif <= 0.10:
-        return "prix_marche"
-
-    # Sinon le bien est considéré comme surévalué.
-    else:
-        return "surevalue"
-
-
-def expliquer_categorie(categorie):
-    """
-    Retourne une explication simple de la catégorie attribuée au bien.
-
-    Cette fonction permet d'ajouter une interprétation métier directement
-    exploitable dans le dashboard ou lors de l'analyse.
-    """
-
-    if categorie == "opportunite":
-        return "Prix inférieur à l'estimation du modèle : bien potentiellement sous-évalué."
-    elif categorie == "prix_marche":
-        return "Prix cohérent avec l'estimation du modèle."
-    elif categorie == "surevalue":
-        return "Prix supérieur à l'estimation du modèle : bien potentiellement surévalué."
-    else:
-        return "Catégorie non déterminée."
-
-
-def enrichir_bien_avec_modele(bien, alpha, beta):
-    """
-    Enrichit un bien immobilier avec des informations supplémentaires
-    issues du modèle de régression.
-
-    On ajoute :
-    - le prix estimé à partir de la surface
-    - la catégorie métier (opportunité, marché, surévalué)
-    - une explication simple de cette catégorie
-    - le score global du bien
-    """
-
-    # Estimation du prix à partir du modèle de régression linéaire.
-    prix_estime = predict(alpha, beta, bien["surface"])
-
-    # Calcul du score global du bien.
-    score = score_bien(
-        bien["prix"],
-        bien["surface"],
-        bien["nb_pieces"],
-        bien["proximite_mer"]
-    )
-
-    # Classification du bien en fonction de l'écart entre prix réel et estimé.
-    categorie = classifier_prix(bien["prix"], prix_estime)
-
-    # On ajoute également une explication textuelle pour rendre
-    # le résultat plus compréhensible côté métier.
-    explication = expliquer_categorie(categorie)
-
-    # On retourne un dictionnaire enrichi avec toutes les informations utiles.
-    return {
-        **bien,
-        "prix_estime": round(prix_estime, 2),
-        "categorie": categorie,
-        "explication": explication,
-        "score": score
-    }
 
 
 def classer_biens(biens):
     """
-    Classe une liste de biens immobiliers en fonction de leur score.
-
-    Les biens avec le score le plus élevé sont considérés comme
-    les plus intéressants selon les critères définis.
+    Classe une liste de biens immobiliers selon leur score global.
     """
+    biens_scored = []
 
-    scored = []
-
-    # On calcule le score de chaque bien.
-    for b in biens:
-        s = score_bien(
-            b["prix"],
-            b["surface"],
-            b["nb_pieces"],
-            b["proximite_mer"]
+    for bien in biens:
+        score = score_bien(
+            prix=bien.get("prix", 0),
+            surface=bien.get("surface", 0),
+            nb_pieces=bien.get("nb_pieces", 0),
+            proximite_mer=bien.get("proximite_mer", None),
         )
+        biens_scored.append({**bien, "score": score})
 
-        # On ajoute le score dans la structure du bien.
-        scored.append({**b, "score": s})
+    return sorted(biens_scored, key=lambda x: x["score"], reverse=True)
 
-    # On retourne la liste triée par score décroissant.
-    return sorted(scored, key=lambda x: x["score"], reverse=True)
+
+def enrich_listing_with_model(listing: dict, alpha: float, beta: float) -> dict:
+    """
+    Enrichit une annonce avec :
+    - prix estime
+    - ecart absolu
+    - ecart relatif en %
+    - categorie
+    - score d'opportunite
+    - insight
+    """
+    surface = safe_float(listing.get("surface", 0))
+    listed_price = safe_float(listing.get("prix", listing.get("price", 0)))
+    description = listing.get("description", "")
+
+    predicted_price = predict(alpha, beta, surface)
+
+    return {
+        **listing,
+        "prix_estime": round(predicted_price, 2),
+        "ecart_absolu": round(price_difference(predicted_price, listed_price), 2),
+        "ecart_pct": round(price_difference_pct(predicted_price, listed_price), 2),
+        "categorie": classify_listing(predicted_price, listed_price),
+        "score_opportunite": opportunity_score(predicted_price, listed_price),
+        "insight": generate_listing_insight(predicted_price, listed_price, description),
+        "infos_description": extract_features_from_description(description),
+    }
