@@ -277,7 +277,7 @@ def get_kpis(
         prix_median = int(round(current_median_listings)) if current_median_listings > 0 else 0
 
     metadata = listings_metadata or get_listings_metadata()
-    trends = trends_df or build_listing_trend(listings_df)
+    trends = trends_df if (trends_df is not None and not trends_df.empty) else build_listing_trend(listings_df)
     status = get_data_status(listings_df, sales_df, trends_df=trends, listings_metadata=metadata)
 
     return {
