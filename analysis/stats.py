@@ -41,10 +41,6 @@ def standard_deviation(xs: list[float]) -> float:
     return math.sqrt(variance(xs))
 
 
-
-[Image of standard deviation on a normal distribution curve]
-
-
 def covariance(xs: list[float], ys: list[float]) -> float:
     """regarde si deux séries de chiffres ont tendance à varier ensemble."""
     # on vérifie si x et y grimpent ou descendent en même temps [cite: 69]
