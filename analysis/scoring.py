@@ -64,11 +64,6 @@ def classify_listing(
 ) -> str:
     """
     Classe un bien selon l'ecart relatif entre prix predit et prix annonce.
-
-    Exemples :
-    - ecart <= -8%  -> opportunite
-    - entre -8% et +8% -> prix_marche
-    - ecart >= +8%  -> surevalue
     """
     predicted_price = safe_float(predicted_price)
     listed_price = safe_float(listed_price)
@@ -89,11 +84,6 @@ def classify_listing(
 def opportunity_score(predicted_price: float, listed_price: float) -> float:
     """
     Score d'opportunite sur 100.
-
-    Idee simple :
-    - plus le prix annonce est sous le prix predit, plus le score monte
-    - si le bien est survalue, le score baisse
-
     50 = neutre
     > 50 = interessant
     < 50 = moins interessant
@@ -236,8 +226,7 @@ def generate_listing_insight(predicted_price: float, listed_price: float, descri
 def score_bien(prix, surface, nb_pieces=0, proximite_mer=None):
     """
     Calcule un score global entre 0 et 100 pour un bien immobilier.
-
-    Cette fonction est conservee pour rester compatible avec les tests.
+    Conservee pour rester compatible avec les tests.
     """
     prix = safe_float(prix)
     surface = safe_float(surface)
