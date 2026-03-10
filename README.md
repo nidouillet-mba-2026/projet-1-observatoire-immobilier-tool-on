@@ -44,7 +44,7 @@ pip install -r requirements.txt
 ## Lancement local
 
 ```bash
-streamlit run app/streamlit_app.py
+streamlit run app/Home.py
 ```
 
 ## Application deployee
