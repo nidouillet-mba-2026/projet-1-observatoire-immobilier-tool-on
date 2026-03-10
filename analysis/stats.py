@@ -1,48 +1,65 @@
 """
-Fonctions statistiques from scratch.
-Reference : Joel Grus, "Data Science From Scratch", chapitre 5.
-
-IMPORTANT : N'importez pas numpy, pandas ou statistics pour ces fonctions.
-Implementez-les avec du Python pur (listes, boucles, math).
+fonctions statistiques faites maison. 
+référence : joel grus, "data science from scratch", chapitre 5. [cite: 65, 66]
 """
-
 import math
 
-
 def mean(xs: list[float]) -> float:
-    """Retourne la moyenne d'une liste de nombres."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez mean() - voir Grus ch.5")
-
+    """donne la moyenne d'une liste de chiffres."""
+    # on additionne tout et on divise par le nombre d'éléments [cite: 68]
+    return sum(xs) / len(xs)
 
 def median(xs: list[float]) -> float:
-    """Retourne la mediane d'une liste de nombres."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez median() - voir Grus ch.5")
+    """trouve la valeur qui coupe la liste en deux."""
+    # d'abord on trie la liste pour y voir plus clair [cite: 68]
+    n = len(xs)
+    sorted_xs = sorted(xs)
+    midpoint = n // 2
 
+    if n % 2 == 1:
+        # si c'est impair, on prend pile l'élément du milieu [cite: 68]
+        return sorted_xs[midpoint]
+    else:
+        # si c'est pair, on fait la moyenne des deux chiffres du centre [cite: 68]
+        lo = midpoint - 1
+        hi = midpoint
+        return (sorted_xs[lo] + sorted_xs[hi]) / 2
 
 def variance(xs: list[float]) -> float:
-    """Retourne la variance d'une liste de nombres."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez variance() - voir Grus ch.5")
-
+    """calcule la variance pour voir comment les chiffres s'étalent."""
+    # on mesure l'écart moyen par rapport à la moyenne [cite: 68]
+    n = len(xs)
+    if n < 2:
+        return 0.0
+    mu = mean(xs)
+    # on fait la somme des écarts au carré et on divise [cite: 68]
+    return sum((x - mu) ** 2 for x in xs) / (n - 1)
 
 def standard_deviation(xs: list[float]) -> float:
-    """Retourne l'ecart-type d'une liste de nombres."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez standard_deviation() - voir Grus ch.5")
+    """donne l'écart-type, c'est plus facile à lire que la variance."""
+    # c'est simplement la racine carrée de la variance [cite: 68]
+    return math.sqrt(variance(xs))
 
 
 def covariance(xs: list[float], ys: list[float]) -> float:
-    """Retourne la covariance entre deux series."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez covariance() - voir Grus ch.5")
-
+    """regarde si deux séries de chiffres ont tendance à varier ensemble."""
+    # on vérifie si x et y grimpent ou descendent en même temps [cite: 69]
+    n = len(xs)
+    if n < 2:
+        return 0.0
+    mu_x = mean(xs)
+    mu_y = mean(ys)
+    return sum((x - mu_x) * (y - mu_y) for x, y in zip(xs, ys)) / (n - 1)
 
 def correlation(xs: list[float], ys: list[float]) -> float:
     """
-    Retourne le coefficient de correlation de Pearson entre deux series.
-    Retourne 0 si l'une des series a un ecart-type nul.
+    calcule le coefficient de pearson (entre -1 et 1). [cite: 69]
     """
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez correlation() - voir Grus ch.5")
+    # c'est le rapport entre la covariance et les écarts-types [cite: 69]
+    stdev_x = standard_deviation(xs)
+    stdev_y = standard_deviation(ys)
+    if stdev_x > 0 and stdev_y > 0:
+        return covariance(xs, ys) / (stdev_x * stdev_y)
+    else:
+        # si l'une des listes est toute plate, la corrélation est nulle [cite: 69]
+        return 0
