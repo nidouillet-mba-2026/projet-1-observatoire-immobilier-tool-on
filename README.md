@@ -68,3 +68,5 @@ streamlit run app/streamlit_app.py
 ## References
 
 - Joel Grus, *Data Science From Scratch*, ch.5 (statistiques) et ch.14 (regression)
+
+Projet réalisé dans le cadre du MSC IA.
