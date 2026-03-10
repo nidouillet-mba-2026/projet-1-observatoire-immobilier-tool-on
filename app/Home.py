@@ -1,5 +1,7 @@
 import plotly.express as px
+import pandas as pd
 import streamlit as st
+from pathlib import Path
 
 from app.components.ui import (
     apply_custom_css,
@@ -11,16 +13,42 @@ from app.components.ui import (
     sidebar_logo,
     topbar,
 )
-from app.services.data_provider import get_listings, get_listings_metadata, get_sales
-from app.services.metrics import (
-    build_listing_market_summary,
-    build_listing_trend,
-    compute_opportunity_scores,
-    compute_trend_insights,
-    filter_by_period,
-    get_data_status,
-    get_kpis,
-)
+
+CSV_CANDIDATES = [
+    Path("donnees/Annonce_immo.csv"),
+    Path("Annonce_immo.csv"),
+]
+
+
+def _load_annonces_csv() -> pd.DataFrame:
+    for candidate in CSV_CANDIDATES:
+        if not candidate.exists():
+            continue
+        for encoding in ("utf-8", "latin-1"):
+            try:
+                df = pd.read_csv(candidate, sep=";", encoding=encoding, on_bad_lines="skip")
+                df["source_file"] = str(candidate)
+                return df
+            except Exception:
+                continue
+    return pd.DataFrame()
+
+
+def _to_numeric(series: pd.Series) -> pd.Series:
+    return pd.to_numeric(series, errors="coerce")
+
+
+def _fmt_currency(value, suffix=" €"):
+    if pd.isna(value):
+        return "N/A"
+    return f"{int(round(value)):,}".replace(",", " ") + suffix
+
+
+def _fmt_price_m2(value):
+    if pd.isna(value):
+        return "N/A"
+    return f"{int(round(value)):,}".replace(",", " ") + " €/m²"
+
 
 st.set_page_config(page_title="Accueil - ToolOn", layout="wide", initial_sidebar_state="expanded")
 
@@ -29,156 +57,91 @@ apply_custom_css()
 sidebar_logo()
 topbar("Vue d'ensemble")
 
-period = st.session_state.get("periode", "12 derniers mois")
-sales_df = get_sales()
-base_listings = get_listings()
-trend_df = build_listing_trend(base_listings)
-meta = get_listings_metadata()
-listings_df = filter_by_period(base_listings, "date_ajout", period)
-status = get_data_status(listings_df, sales_df, trends_df=trend_df, listings_metadata=meta)
-scored_listings = compute_opportunity_scores(listings_df, sales_df, status=status)
-kpis = get_kpis(period, listings_metadata=meta, trends_df=trend_df)
+raw_df = _load_annonces_csv()
+full_count = len(raw_df)
 
-page_header(export_df=scored_listings, export_filename="accueil_annonces.csv")
+if not raw_df.empty:
+    df = raw_df.copy()
+    for col in ("prix", "surface_m2", "prix_m2"):
+        if col in df.columns:
+            df[col] = _to_numeric(df[col])
+    if "prix_m2" in df.columns:
+        inferred = df["prix_m2"].isna() & df["prix"].gt(0) & df["surface_m2"].gt(0)
+        df.loc[inferred, "prix_m2"] = df.loc[inferred, "prix"] / df.loc[inferred, "surface_m2"]
+    if "type_bien" in df.columns:
+        df["type_bien"] = df["type_bien"].astype(str).str.lower().str.strip()
+    mask = pd.Series(True, index=df.index)
+    if "prix" in df.columns:
+        mask &= df["prix"] > 0
+    if "surface_m2" in df.columns:
+        mask &= df["surface_m2"] > 0
+    df = df[mask].copy()
+else:
+    df = pd.DataFrame()
 
-if not status["has_real_listings"]:
-    st.info("Mode fallback: le CSV réel n'est pas reconnu, les métriques dépendent encore des mock internes.")
+ignored_count = full_count - len(df)
 
-status_items = [
-    ("Listings", status["has_real_listings"], "CSV réel détecté" if status["has_real_listings"] else "Manquant"),
-    ("Quartiers", status["has_quartier"], "OK" if status["has_quartier"] else "Partiel"),
-    ("Dates", status["has_dates"], "OK" if status["has_dates"] else "Manquant"),
-    ("DVF", status["has_dvf"], "Non connecté"),
-    (
-        "Score opp.",
-        status["score_ready"],
-        "Calculable" if status["score_ready"] else "N/A - Quartier/Dates",
-    ),
-]
-with st.container():
-    st.markdown("<div class='section-title'>Qualité des données</div>", unsafe_allow_html=True)
-    cols = st.columns(len(status_items))
-    for col, (label, ok, note) in zip(cols, status_items):
-        state = "OK" if ok else "Manquant"
-        col.markdown(
-            f"""
-        <div class='data-status-card'>
-            <div class='status-chip'>{label}</div>
-            <div class='status-value'>{state}</div>
-            <div class='status-note'>{note}</div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+def _safe_count(cond):
+    return int(cond.sum()) if cond is not None else 0
+
+nb_logements = len(df)
+prix_moyen = df["prix"].mean() if "prix" in df.columns and not df["prix"].dropna().empty else None
+prix_m2_median = df["prix_m2"].median() if "prix_m2" in df.columns and not df["prix_m2"].dropna().empty else None
+prix_m2_moyen = df["prix_m2"].mean() if "prix_m2" in df.columns and not df["prix_m2"].dropna().empty else None
+maisons_cond = df["type_bien"].str.contains("maison", na=False) if "type_bien" in df.columns else None
+apparts_cond = df["type_bien"].str.contains("appart", na=False) if "type_bien" in df.columns else None
+nb_maisons = _safe_count(maisons_cond)
+nb_apparts = _safe_count(apparts_cond)
+
+page_header(export_df=df, export_filename="annonces_real.csv")
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    kpi_card("Annonces actives", f"{kpis['annonces_actives']}", kpis["trend_annonces"], note="Listings - mise à jour csv")
+    kpi_card("Nb de logements", f"{nb_logements:,}".replace(",", " "))
 with col2:
-    price_note = f"Source: {kpis.get('prix_source', 'Listings')}"
-    kpi_card("Prix médian / m²", f"{kpis['prix_median']} €", kpis.get("trend_prix"), note=price_note)
+    kpi_card("Prix moyen", _fmt_currency(prix_moyen))
 with col3:
-    avg_score = None
-    if status["score_ready"]:
-        non_null_scores = scored_listings["score_opportunite"].dropna()
-        if not non_null_scores.empty:
-            avg_score = round(float(non_null_scores.mean()), 1)
-    score_value = f"{avg_score}/100" if avg_score is not None else "N/A"
-    score_note = (
-        "Calculé (DVF)" if status["has_dvf"] else "Calculé (Listings)"
-        if status["score_ready"]
-        else "À connecter: quartiers + dates"
-    )
-    kpi_card("Score opportunité moyen", score_value, note=score_note)
+    kpi_card("Prix médian / m²", _fmt_price_m2(prix_m2_median))
 with col4:
-    delay_value = f"{kpis['delai_vente']} j" if kpis.get("delai_vente") else "N/A"
-    delay_note = None if kpis.get("delai_vente") else "À connecter: DVF"
-    kpi_card("Délai de vente estimé", delay_value, note=delay_note)
+    kpi_card("Prix moyen / m²", _fmt_price_m2(prix_m2_moyen))
+
+col5, col6 = st.columns(2)
+with col5:
+    kpi_card("Nb de maisons", f"{nb_maisons}")
+with col6:
+    kpi_card("Nb d'appartements", f"{nb_apparts}")
 
 st.markdown("<div style='height: 0.6rem;'></div>", unsafe_allow_html=True)
 
-col_chart1, col_chart2 = st.columns(2)
-with col_chart1:
-    section_title("Prix moyen par quartier (€/m²)")
-    if scored_listings.empty or "quartier" not in scored_listings.columns:
-        st.info("Aucune donnée exploitable pour le graphique par quartier.")
+section_title("Répartition des biens par prix")
+if df.empty or "prix" not in df.columns or df["prix"].dropna().empty:
+    st.info("Données prix manquantes pour construire l'histogramme.")
+else:
+    max_price = float(df["prix"].max())
+    if max_price <= 0:
+        st.info("Valeurs prix invalides.")
     else:
-        avg_price = (
-            scored_listings.groupby("quartier")["prix_m2"]
-            .mean()
-            .reset_index()
-            .sort_values("prix_m2", ascending=True)
-        )
-        fig = px.bar(
-            avg_price,
-            x="prix_m2",
-            y="quartier",
-            orientation="h",
-            color_discrete_sequence=["#0ea5e9"],
-            labels={"prix_m2": "Prix/m²", "quartier": "Quartier"},
-            template=get_plotly_template(),
-        )
+        bin_count = min(12, max(4, int(max_price // 50000)))
+        step = max(50000, int(round(max_price / bin_count / 50000) * 50000))
+        bins = list(range(0, int(step * (bin_count + 1)), step))
+        if bins[-1] < max_price:
+            bins.append(int(max_price + step))
+        df["price_bin"] = pd.cut(df["prix"], bins=bins, include_lowest=True)
+        counts = df["price_bin"].value_counts().sort_index()
+        labels = [f"{int(interval.left):,} - {int(interval.right):,}".replace(",", " ") for interval in counts.index]
+        fig = px.bar(x=labels, y=counts.values, template=get_plotly_template(), labels={"y": "Nombre de biens", "x": "Prix"})
         fig.update_layout(
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=0, r=0, t=0, b=0),
-            xaxis_title="",
-            yaxis_title="",
-            height=320,
+            height=360,
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-with col_chart2:
-    section_title("Tendance prix annonces")
-    if not status["has_dates"] or trend_df.empty:
-        st.info("Données insuffisantes pour afficher les tendances annuelles.")
-    else:
-        insight = compute_trend_insights(trend_df, "Prix m² médian")
-        st.caption(
-            f"Dernier niveau: {insight['latest']} €/m² | Variation annuelle: {insight['yoy_pct']}% "
-            f"({insight['delta_abs']} €/m²)"
-        )
-        fig2 = px.line(
-            trend_df,
-            x="Date",
-            y="Prix m² médian",
-            color_discrete_sequence=["#10b981"],
-            template=get_plotly_template(),
-        )
-        fig2.update_layout(
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=0, r=0, t=0, b=0),
-            xaxis_title="",
-            yaxis_title="",
-            height=320,
-        )
-        st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+if ignored_count > 0:
+    st.caption(f"Lignes ignorées après filtrage: {ignored_count}")
 
-col_bottom_1, col_bottom_2 = st.columns([1.1, 1.2])
-with col_bottom_1:
-    section_title("Top 5 biens sous-évalués")
-    top_opps = scored_listings.sort_values("score_opportunite", ascending=False).head(5).copy()
-    if top_opps.empty:
-        st.info("Aucune annonce disponible.")
-    else:
-        display = top_opps[["quartier", "surface_m2", "pieces", "prix_eur", "prix_m2", "score_opportunite"]].copy()
-        display = display.rename(
-            columns={
-                "quartier": "Quartier",
-                "surface_m2": "Surface (m²)",
-                "pieces": "Pièces",
-                "prix_eur": "Prix (€)",
-                "prix_m2": "Prix/m²",
-                "score_opportunite": "Score Opportunité",
-            }
-        )
-        st.dataframe(display, use_container_width=True, hide_index=True)
-
-with col_bottom_2:
-    section_title("Résumé marché par quartier")
-    summary = build_listing_market_summary(scored_listings).head(8)
-    if summary.empty:
-        st.info("Aucune donnée quartier disponible.")
-    else:
-        st.dataframe(summary, use_container_width=True, hide_index=True)
+if "date_publication" in raw_df.columns:
+    dates = pd.to_datetime(raw_df["date_publication"], errors="coerce")
+    if dates.notna().any():
+        st.caption(f"Publications: {dates.min().strftime('%Y-%m-%d')} → {dates.max().strftime('%Y-%m-%d')}")
