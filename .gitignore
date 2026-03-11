@@ -27,3 +27,9 @@ notebook_execution.log
 # Secrets
 .env
 .env.local
+
+.streamlit/
+
+
+# Pycache
+.pytest_cache/

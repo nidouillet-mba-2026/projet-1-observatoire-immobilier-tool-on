@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+plotly
+requests
+beautifulsoup4
+lxml
+python-dateutil
+pytest
+python-dotenv
+playwright
