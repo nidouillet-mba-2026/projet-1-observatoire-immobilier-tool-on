@@ -28,6 +28,8 @@ notebook_execution.log
 .env
 .env.local
 
+.streamlit/
+
 
 # Pycache
 .pytest_cache/
