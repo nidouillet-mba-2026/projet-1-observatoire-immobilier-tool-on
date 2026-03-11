@@ -65,6 +65,17 @@ def load_raw_csv(path: str) -> pd.DataFrame:
     return df
 
 
+def _ensure_id_column(df: pd.DataFrame) -> pd.DataFrame:
+    if "id_annonce" in df.columns:
+        return df
+    for alias in ("id", "id_annonce", "idannonce", "reference", "ref"):
+        if alias in df.columns:
+            df["id_annonce"] = df[alias].astype(str)
+            return df
+    df["id_annonce"] = df.index.astype(str)
+    return df
+
+
 # Session state
 if "open_tabs" not in st.session_state:
     st.session_state["open_tabs"] = []
@@ -132,6 +143,7 @@ if csv_path is None:
     st.stop()
 
 df = load_raw_csv(csv_path)
+df = _ensure_id_column(df)
 
 # Valeurs min/max pour les sliders
 prix_vals = df["prix"].dropna()
