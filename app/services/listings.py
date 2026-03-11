@@ -7,9 +7,9 @@ import pandas as pd
 import streamlit as st
 
 CSV_PATHS = [
-    Path("data/Annonce_immo.csv"),
-    Path("donnees/Annonce_immo.csv"),
-    Path("Annonce_immo.csv"),
+    Path("data/annonces_actuelles.csv"),
+    Path("donnees/annonces_actuelles.csv"),
+    Path("annonces_actuelles.csv"),
 ]
 
 

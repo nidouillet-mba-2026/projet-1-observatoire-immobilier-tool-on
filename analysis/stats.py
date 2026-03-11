@@ -33,7 +33,7 @@ def variance(xs: list[float]) -> float:
         return 0.0
     mu = mean(xs)
     # on fait la somme des écarts au carré et on divise [cite: 68]
-    return sum((x - mu) ** 2 for x in xs) / (n - 1)
+    return sum((x - mu) ** 2 for x in xs) / n
 
 def standard_deviation(xs: list[float]) -> float:
     """donne l'écart-type, c'est plus facile à lire que la variance."""
@@ -49,7 +49,7 @@ def covariance(xs: list[float], ys: list[float]) -> float:
         return 0.0
     mu_x = mean(xs)
     mu_y = mean(ys)
-    return sum((x - mu_x) * (y - mu_y) for x, y in zip(xs, ys)) / (n - 1)
+    return sum((x - mu_x) * (y - mu_y) for x, y in zip(xs, ys)) / n
 
 def correlation(xs: list[float], ys: list[float]) -> float:
     """

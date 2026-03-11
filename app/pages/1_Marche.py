@@ -13,7 +13,7 @@ from app.components.ui import (
     topbar,
 )
 
-CSV_PATHS = [Path("data/Annonce_immo.csv"), Path("Annonce_immo.csv")]
+CSV_PATHS = [Path("data/annonces_actuelles.csv"), Path("annonces_actuelles.csv")]
 
 
 def _load_dataset() -> pd.DataFrame:
