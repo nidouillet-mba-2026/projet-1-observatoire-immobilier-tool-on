@@ -116,7 +116,7 @@ http://localhost:8501
 
 ## Application déployée
 
-**URL :** projet-1-observatoire-immobilier-tool-on-a2hkyyz653y59s264nkhc
+**URL :** https://projet-1-observatoire-immobilier-tool-on-mljs5z2ctwygrwatx8cau.streamlit.app
 
 ---
 
@@ -346,21 +346,3 @@ pip install -r requirements.txt
 - Chapitre 14 — Linear Regression
 
 ---
-
-Application deployee
-URL : projet-1-observatoire-immobilier-tool-on-mljs5z2ctwygrwatx8cau.streamlit.app
-
-Repartition du travail
-Membre	Role
-Joé Paday	Data Engineer	
-Jérémy Indelicato	Data Scientist
-Mody Hady BARRY	AI Engineer
-Sandro Antonietti / Mathis Galloul	Frontend / DevOps
-
-
-## Donnees
-
-DVF : telechargees depuis https://files.data.gouv.fr/geo-dvf/latest/csv/83/
-Annonces : collectees via scraper Python le 10/03/2026
-References
-Joel Grus, Data Science From Scratch, ch.5 (statistiques) et ch.14 (regression)
