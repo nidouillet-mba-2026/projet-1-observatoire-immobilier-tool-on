@@ -18,7 +18,7 @@ initialize_session_state()
 apply_custom_css()
 sidebar_logo()
 
-# ── Chargement des données ────────────────────────────────────────────────────
+# Chargement des données
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / "donnees"
 
@@ -65,14 +65,14 @@ def load_raw_csv(path: str) -> pd.DataFrame:
     return df
 
 
-# ── Session state ─────────────────────────────────────────────────────────────
+# Session state
 if "open_tabs" not in st.session_state:
     st.session_state["open_tabs"] = []
 if "cards_shown" not in st.session_state:
     st.session_state["cards_shown"] = 21
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 def _fmt_prix(val) -> str:
     try:
         return f"{int(float(val)):,} €".replace(",", "\u00a0")
@@ -107,7 +107,7 @@ def _bool_label(val) -> str:
     return "Oui" if str(val).strip() in ("1", "1.0", "True", "true", "Oui", "oui") else "Non"
 
 
-# ── Topbar avec bouton Recharger ──────────────────────────────────────────────
+# Topbar avec bouton Recharger
 theme = st.session_state.get("theme", "light")
 col_title, col_toggle, col_reload = st.columns([5, 1, 1.2])
 with col_title:
@@ -125,7 +125,7 @@ with col_reload:
         st.rerun()
 st.markdown("<div class='topbar-divider'></div>", unsafe_allow_html=True)
 
-# ── Chargement ────────────────────────────────────────────────────────────────
+# Chargement
 csv_path = _find_csv()
 if csv_path is None:
     st.error("Aucun fichier CSV trouvé dans le dossier `donnees/`.")
@@ -133,7 +133,7 @@ if csv_path is None:
 
 df = load_raw_csv(csv_path)
 
-# ── Valeurs min/max pour les sliders ─────────────────────────────────────────
+# Valeurs min/max pour les sliders
 prix_vals = df["prix"].dropna()
 surf_vals = df["surface_m2"].dropna()
 
@@ -151,7 +151,7 @@ p_max = int(df["pieces"].dropna().max()) if "pieces" in df.columns and df["piece
 if p_max < 1:
     p_max = 1
 
-# ── Filtres principaux ────────────────────────────────────────────────────────
+# Filtres principaux
 section_title("Filtres")
 f1, f2, f3, f4, f5 = st.columns(5)
 with f1:
@@ -175,7 +175,7 @@ with f5:
     q_opts = sorted([q for q in df["quartier"].dropna().unique() if str(q).strip()]) if "quartier" in df.columns else []
     quartiers_sel = st.multiselect("Quartier", q_opts, placeholder="Tous")
 
-# ── Filtres avancés ───────────────────────────────────────────────────────────
+# Filtres avancés
 with st.expander("Filtres avancés"):
     fa1, fa2, fa3 = st.columns([1, 1, 3])
     with fa1:
@@ -194,7 +194,7 @@ with st.expander("Filtres avancés"):
                 if st.checkbox(dv, value=True, key=f"dpe_{dv}"):
                     dpe_sel.append(dv)
 
-# ── Tri ───────────────────────────────────────────────────────────────────────
+#  Tri
 col_tri, _ = st.columns([2, 4])
 with col_tri:
     tri = st.selectbox(
@@ -202,7 +202,7 @@ with col_tri:
         ["Score opportunité", "Prix croissant", "Prix décroissant"],
     )
 
-# ── Application des filtres ───────────────────────────────────────────────────
+# Application des filtres 
 flt = df.copy()
 flt = flt[flt["prix"].between(prix_range[0], prix_range[1], inclusive="both")]
 flt = flt[flt["surface_m2"].between(surf_range[0], surf_range[1], inclusive="both")]
@@ -227,7 +227,7 @@ else:
     flt = flt.sort_values("score_opportunite", ascending=False)
 flt = flt.reset_index(drop=True)
 
-# ── KPIs ──────────────────────────────────────────────────────────────────────
+# KPIs
 st.markdown("<div style='height:1.25rem;'></div>", unsafe_allow_html=True)
 k1, k2, k3 = st.columns(3)
 with k1:
@@ -240,10 +240,10 @@ with k3:
     kpi_card("Score moyen", f"{avg_s}/100", None)
 st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
 
-# ── Onglets ───────────────────────────────────────────────────────────────────
+# ── Onglets 
 open_tabs = st.session_state["open_tabs"]  # list[dict] : {id_annonce, titre}
 
-tab_labels = ["📋 Résultats"]
+tab_labels = ["Résultats"]
 for t in open_tabs:
     short = t["titre"][:22] + "…" if len(t["titre"]) > 22 else t["titre"]
     tab_labels.append(f"🏠 {short}")
@@ -252,7 +252,7 @@ tabs_ui = st.tabs(tab_labels)
 st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
 
-# ── Rendu d'une card ──────────────────────────────────────────────────────────
+# Rendu d'une card
 def render_card(bien: pd.Series, card_key: str) -> None:
     type_bien = str(bien.get("type_bien", "")).strip()
     icon = "🏠" if "maison" in type_bien.lower() else "🏢"
@@ -293,7 +293,7 @@ def render_card(bien: pd.Series, card_key: str) -> None:
         st.rerun()
 
 
-# ── Rendu d'une fiche ─────────────────────────────────────────────────────────
+# Rendu d'une fiche 
 def render_fiche(bien_id: str) -> None:
     rows = df[df["id_annonce"] == bien_id]
     if rows.empty:
@@ -312,7 +312,7 @@ def render_fiche(bien_id: str) -> None:
 
     st.markdown("<div class='topbar-divider'></div>", unsafe_allow_html=True)
 
-    # ── Partie 1 : Informations ───────────────────────────────────────────────
+    # Partie 1 : Informations
     section_title("Informations du logement")
 
     def _row_html(label: str, value) -> str:
@@ -387,6 +387,8 @@ def render_fiche(bien_id: str) -> None:
         st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
         section_title("Description")
         desc_clean = re.sub(r"<[^>]+>", " ", str(desc).replace("<br>", "\n").replace("<br/>", "\n"))
+        if len(desc_clean) > 700:
+            desc_clean = desc_clean[:700] + "…"
         st.markdown(
             f'<div style="background:var(--card-bg);border:1px solid var(--border-color);'
             f'border-radius:8px;padding:1rem;font-size:0.875rem;color:var(--text-color);'
@@ -400,14 +402,14 @@ def render_fiche(bien_id: str) -> None:
         st.markdown("<div style='height:0.75rem;'></div>", unsafe_allow_html=True)
         st.link_button("Voir l'annonce →", url, type="primary")
 
-    # ── Partie 2 : Opportunité marché (placeholder) ────────────────────────────
+    # Partie 2 : Opportunité marché (placeholder)
     st.markdown("<div class='topbar-divider'></div>", unsafe_allow_html=True)
     section_title("Opportunité marché")
     st.markdown(
         """
 <div style="background:var(--card-bg);border:2px dashed var(--border-color);border-radius:12px;
             padding:2.5rem 2rem;text-align:center;color:var(--muted);">
-  <div style="font-size:2rem;margin-bottom:0.5rem;">📊</div>
+  <div style="font-size:2rem;margin-bottom:0.5rem;"></div>
   <div style="font-size:0.95rem;font-weight:600;">Section à venir</div>
   <div style="font-size:0.82rem;margin-top:0.3rem;">
     L'analyse de l'opportunité marché sera complétée ultérieurement.
@@ -418,7 +420,7 @@ def render_fiche(bien_id: str) -> None:
     )
 
 
-# ── Onglet 0 : Résultats ──────────────────────────────────────────────────────
+# Onglet 0 : Résultats 
 with tabs_ui[0]:
     cards_shown = st.session_state.get("cards_shown", 21)
     page_slice = flt.head(cards_shown)
